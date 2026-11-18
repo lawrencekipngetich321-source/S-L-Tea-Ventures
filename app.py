@@ -1,15 +1,6 @@
 """
 S&L TEA VENTURES — Tea Leaf Business Dashboard
 Run locally: streamlit run app.py
-
-Required packages:
-    streamlit
-    pandas
-    numpy
-    plotly
-    python-docx
-
-The app stores records in sl_tea_records.csv beside this file.
 """
 
 from __future__ import annotations
@@ -26,19 +17,17 @@ import plotly.graph_objects as go
 import streamlit as st
 
 try:
-  from docx import Document
-  from docx.enum.table import WD_ALIGN_PARAGRAPH, WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
-  from docx.oxml import OxmlElement
-  from docx.oxml.ns import qn
-  from docx.shared import Inches, Pt, RGBColor
+    from docx import Document
+    from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-  DOCX_AVAILABLE = True
+    DOCX_AVAILABLE = True
 except ImportError:
-  DOCX_AVAILABLE = False
+    DOCX_AVAILABLE = False
 
 
 # ---------------------------------------------------------------------
-# APP CONFIGURATION & BRAND
+# APP CONFIGURATION & BRAND PALETTE
 # ---------------------------------------------------------------------
 
 st.set_page_config(
@@ -56,10 +45,6 @@ SKY = "#47A9E8"
 TEAL = "#19A7A0"
 GREEN = "#35A853"
 ORANGE = "#F39C35"
-RED = "#E05260"
-PURPLE = "#8662C7"
-PINK = "#D65B9E"
-GOLD = "#D6A52B"
 INK = "#20334D"
 MUTED = "#6B7C93"
 BG = "#F3F6FA"
@@ -80,45 +65,55 @@ COLUMNS = [
     "Net Profit Target (KES)",
 ]
 
-STARTER_DATA = pd.DataFrame([
-    {
-        "Year": 2026,
-        "Month": "September",
-        "Buying Price (KES/kg)": 21.00,
-        "Selling Price (KES/kg)": 24.00,
-        "Total Kgs": 1388.00,
-        "Expenses (KES)": 1500.00,
-        "Net Profit Target (KES)": 3000.00,
-    },
-    {
-        "Year": 2026,
-        "Month": "October",
-        "Buying Price (KES/kg)": 20.50,
-        "Selling Price (KES/kg)": 24.00,
-        "Total Kgs": 2536.60,
-        "Expenses (KES)": 0.00,
-        "Net Profit Target (KES)": 8000.00,
-    },
-    {
-        "Year": 2026,
-        "Month": "November",
-        "Buying Price (KES/kg)": 20.50,
-        "Selling Price (KES/kg)": 24.00,
-        "Total Kgs": 3360.00,
-        "Expenses (KES)": 0.00,
-        "Net Profit Target (KES)": 11760.00,
-    },
-])
+NUMERIC_COLS = [
+    "Buying Price (KES/kg)",
+    "Selling Price (KES/kg)",
+    "Total Kgs",
+    "Expenses (KES)",
+    "Net Profit Target (KES)",
+]
+
+STARTER_DATA = pd.DataFrame(
+    [
+        {
+            "Year": 2026,
+            "Month": "September",
+            "Buying Price (KES/kg)": 21.00,
+            "Selling Price (KES/kg)": 24.00,
+            "Total Kgs": 1388.00,
+            "Expenses (KES)": 1500.00,
+            "Net Profit Target (KES)": 3000.00,
+        },
+        {
+            "Year": 2026,
+            "Month": "October",
+            "Buying Price (KES/kg)": 20.50,
+            "Selling Price (KES/kg)": 24.00,
+            "Total Kgs": 2536.60,
+            "Expenses (KES)": 0.00,
+            "Net Profit Target (KES)": 8000.00,
+        },
+        {
+            "Year": 2026,
+            "Month": "November",
+            "Buying Price (KES/kg)": 20.50,
+            "Selling Price (KES/kg)": 24.00,
+            "Total Kgs": 3360.00,
+            "Expenses (KES)": 0.00,
+            "Net Profit Target (KES)": 11760.00,
+        },
+    ]
+)
 
 
 # ---------------------------------------------------------------------
-# CUSTOM STYLING (PRESERVES YOUR EXACT VISUAL IDENTITY & LAYOUT)
+# CUSTOM STYLING
 # ---------------------------------------------------------------------
 
 st.markdown(
     f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+    @import url('https://googleapis.com');
 
     html, body, [class*="css"] {{
         font-family: 'DM Sans', sans-serif;
@@ -242,16 +237,6 @@ st.markdown(
         font-size: 10px;
         margin-top: 5px;
     }}
-    .status-strip {{
-        background: #EAF3FC;
-        color: {NAVY};
-        border: 1px solid #D6E6F6;
-        border-radius: 9px;
-        padding: 10px 13px;
-        font-size: 12px;
-        font-weight: 600;
-        margin: 8px 0 12px 0;
-    }}
     .home-hero {{
         position: relative;
         overflow: hidden;
@@ -315,67 +300,57 @@ st.markdown(
 
 
 # ---------------------------------------------------------------------
-# DATA LOADING, CALCULATIONS & PERSISTENCE
+# DATA SANITIZATION, PERSISTENCE & METRIC CALCULATIONS
 # ---------------------------------------------------------------------
 
 
+def sanitize_records(df: pd.DataFrame) -> pd.DataFrame:
+    cleaned = df.copy()
+    for col in COLUMNS:
+        if col not in cleaned.columns:
+            cleaned[col] = 0.0 if col in NUMERIC_COLS else ""
+
+    cleaned = cleaned[COLUMNS].copy()
+    cleaned["Year"] = pd.to_numeric(cleaned["Year"], errors="coerce").fillna(2026).astype(int)
+    cleaned["Month"] = cleaned["Month"].astype(str).str.strip()
+    cleaned = cleaned[cleaned["Month"].isin(MONTHS)].copy()
+
+    for col in NUMERIC_COLS:
+        cleaned[col] = pd.to_numeric(cleaned[col], errors="coerce").fillna(0.0).clip(lower=0.0)
+
+    cleaned = cleaned.drop_duplicates(subset=["Year", "Month"], keep="last").reset_index(drop=True)
+    return cleaned
+
+
 def load_records() -> pd.DataFrame:
-  if DATA_PATH.exists():
-    try:
-      df = pd.read_csv(DATA_PATH)
-      for col in COLUMNS:
-        if col not in df.columns:
-          df[col] = 0.0
-      return df[COLUMNS]
-    except Exception:
-      pass
-  STARTER_DATA.to_csv(DATA_PATH, index=False)
-  return STARTER_DATA.copy()
+    if DATA_PATH.exists():
+        try:
+            df = pd.read_csv(DATA_PATH)
+            cleaned = sanitize_records(df)
+            if not cleaned.empty:
+                return cleaned
+        except Exception:
+            pass
+    STARTER_DATA.to_csv(DATA_PATH, index=False)
+    return STARTER_DATA.copy()
 
 
-def save_records(df: pd.DataFrame) -> None:
-  df[COLUMNS].to_csv(DATA_PATH, index=False)
+def save_records(df: pd.DataFrame) -> pd.DataFrame:
+    cleaned = sanitize_records(df)
+    cleaned.to_csv(DATA_PATH, index=False)
+    return cleaned
 
 
 def enrich_metrics(df: pd.DataFrame) -> pd.DataFrame:
-  data = df.copy()
-  data["Month_Num"] = data["Month"].map(MONTH_INDEX).fillna(0).astype(int)
-  data = data.sort_values(["Year", "Month_Num"]).reset_index(drop=True)
-  data["Period"] = data["Month"].str[:3] + " " + data["Year"].astype(str)
+    data = sanitize_records(df)
+    data["Month_Num"] = data["Month"].map(MONTH_INDEX).fillna(0).astype(int)
+    data = data.sort_values(["Year", "Month_Num"]).reset_index(drop=True)
+    data["Period"] = data["Month"].str[:3] + " " + data["Year"].astype(str)
 
-  data["Buying Cost (KES)"] = (
-      data["Buying Price (KES/kg)"] * data["Total Kgs"]
-  )
-  data["Gross Revenue (KES)"] = (
-      data["Selling Price (KES/kg)"] * data["Total Kgs"]
-  )
-  data["Gross Profit (KES)"] = (
-      data["Gross Revenue (KES)"] - data["Buying Cost (KES)"]
-  )
-  data["Total Outflow (KES)"] = (
-      data["Buying Cost (KES)"] + data["Expenses (KES)"]
-  )
-  data["Net Profit (KES)"] = (
-      data["Gross Profit (KES)"] - data["Expenses (KES)"]
-  )
-  data["Target Variance (KES)"] = (
-      data["Net Profit (KES)"] - data["Net Profit Target (KES)"]
-  )
-  data["Spread (KES/kg)"] = (
-      data["Selling Price (KES/kg)"] - data["Buying Price (KES/kg)"]
-  )
-  data["Net Margin (%)"] = np.where(
-      data["Gross Revenue (KES)"] > 0,
-      (data["Net Profit (KES)"] / data["Gross Revenue (KES)"]) * 100,
-      0.0,
-  )
-  return data
-
-
-def render_kpi(
-    label: str, value: str, note: str, accent: str = BLUE
-) -> None:
-  st.markdown(
-      f"""
-        <div class="kpi-card" style="--accent: {accent};">
-            <div class="kpi-label">{label}</div>
+    data["Buying Cost (KES)"] = data["Buying Price (KES/kg)"] * data["Total Kgs"]
+    data["Gross Revenue (KES)"] = data["Selling Price (KES/kg)"] * data["Total Kgs"]
+    data["Gross Profit (KES)"] = data["Gross Revenue (KES)"] - data["Buying Cost (KES)"]
+    data["Total Outflow (KES)"] = data["Buying Cost (KES)"] + data["Expenses (KES)"]
+    data["Net Profit (KES)"] = data["Gross Profit (KES)"] - data["Expenses (KES)"]
+    data["Target Variance (KES)"] = data["Net Profit (KES)"] - data["Net Profit Target (KES)"]
+    data["Spread (KES/kg)"] = data["Selling Price (KES/kg)"] - data["Buying Price (KES/kg)"]

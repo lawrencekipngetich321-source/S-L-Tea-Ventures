@@ -260,6 +260,87 @@ st.markdown(
         font-weight: 600;
         margin: 8px 0 12px 0;
     }}
+    .home-hero {{
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(115deg, #071B34 0%, #123F70 56%, #2474C6 100%);
+        border-radius: 18px;
+        padding: 25px 28px 23px 28px;
+        margin: 2px 0 16px 0;
+        color: #FFFFFF;
+        box-shadow: 0 10px 26px rgba(16,42,76,.16);
+    }}
+    .home-hero:after {{
+        content: "🍃";
+        position: absolute;
+        right: 30px;
+        top: -20px;
+        font-size: 118px;
+        opacity: .12;
+        transform: rotate(-18deg);
+    }}
+    .home-hero-kicker {{
+        color: #BBD9F5;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 7px;
+    }}
+    .home-hero-title {{
+        color: #FFFFFF !important;
+        font-size: 27px;
+        line-height: 1.18;
+        font-weight: 800;
+        margin: 0;
+    }}
+    .home-hero-subtitle {{
+        color: #DCEBFA;
+        font-size: 12px;
+        margin: 7px 0 0 0;
+        max-width: 760px;
+    }}
+    .home-hero-pills {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 17px;
+    }}
+    .home-hero-pill {{
+        display: inline-block;
+        padding: 6px 10px;
+        border: 1px solid rgba(255,255,255,.24);
+        background: rgba(255,255,255,.10);
+        color: #FFFFFF;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 700;
+    }}
+    .kpi-topline {{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 29px;
+        margin-bottom: 2px;
+    }}
+    .kpi-icon {{
+        width: 29px;
+        height: 29px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px;
+        background: rgba(36,116,198,.10);
+        font-size: 16px;
+        flex: 0 0 29px;
+    }}
+    .kpi-card {{
+        transition: transform .16s ease, box-shadow .16s ease;
+    }}
+    .kpi-card:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 7px 18px rgba(16,42,76,.09);
+    }}
     .insight-card {{
         background: white;
         border: 1px solid {BORDER};
@@ -936,11 +1017,20 @@ def section(title: str) -> None:
     )
 
 
-def kpi(label: str, value: str, accent: str = BLUE, note: str = "") -> None:
+def kpi(
+    label: str,
+    value: str,
+    accent: str = BLUE,
+    note: str = "",
+    icon: str = "📊",
+) -> None:
     st.markdown(
         f"""
         <div class="kpi-card" style="--accent:{accent}">
-            <div class="kpi-label">{label}</div>
+            <div class="kpi-topline">
+                <span class="kpi-icon">{icon}</span>
+                <div class="kpi-label">{label}</div>
+            </div>
             <div class="kpi-value">{value}</div>
             <div class="kpi-note">{note}</div>
         </div>
@@ -986,9 +1076,23 @@ def report_download_button(key: str = "word_report") -> None:
 # ---------------------------------------------------------------------
 
 if page == "Home":
-    page_header(
-        "BUSINESS PERFORMANCE DASHBOARD",
-        f"Executive overview of tea leaf supply, buying, selling, expenses and profit • {selected_year}",
+    st.markdown(
+        f"""
+        <div class="home-hero">
+            <div class="home-hero-kicker">🍃 S&L Tea Ventures · Business intelligence</div>
+            <h1 class="home-hero-title">Tea Leaf Performance<br>At a Glance</h1>
+            <p class="home-hero-subtitle">
+                Your business command centre for supply, purchasing, sales,
+                operating costs and profitability.
+            </p>
+            <div class="home-hero-pills">
+                <span class="home-hero-pill">📅 Reporting year: {selected_year}</span>
+                <span class="home-hero-pill">📦 {months_reported} month(s) recorded</span>
+                <span class="home-hero-pill">💱 Currency: KES</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     if months_remaining > 0:
@@ -1004,28 +1108,28 @@ if page == "Home":
             unsafe_allow_html=True,
         )
 
-    section("YEAR-TO-DATE SNAPSHOT")
+    section("📌  YEAR-TO-DATE SNAPSHOT")
 
     row1 = st.columns(4)
-    kpi("TOTAL KGS SUPPLIED", f'{summary["kgs"]:,.2f} kg', BLUE, "Recorded months")
-    kpi("TOTAL BUYING COST", fmt_kes(summary["buying"]), PURPLE, "Cost of tea leaf purchases")
-    kpi("TOTAL SELLING VALUE", fmt_kes(summary["selling"]), TEAL, "Gross sales value")
-    kpi("NET PROFIT", fmt_kes(summary["net"]), GREEN, "After recorded expenses")
+    kpi("TOTAL KGS SUPPLIED", f'{summary["kgs"]:,.2f} kg', BLUE, "Recorded months", "🌱")
+    kpi("TOTAL BUYING COST", fmt_kes(summary["buying"]), PURPLE, "Cost of tea leaf purchases", "🧾")
+    kpi("TOTAL SELLING VALUE", fmt_kes(summary["selling"]), TEAL, "Gross sales value", "💰")
+    kpi("NET PROFIT", fmt_kes(summary["net"]), GREEN, "After recorded expenses", "💹")
 
     row2 = st.columns(4)
-    kpi("GROSS PROFIT", fmt_kes(summary["gross"]), SKY, "Selling value less buying cost")
-    kpi("TOTAL EXPENSES", fmt_kes(summary["expenses"]), ORANGE, "Operating / transport / other costs")
-    kpi("NET PROFIT MARGIN", f'{summary["margin"]:.1f}%', PINK, "Net profit ÷ selling value")
-    kpi("MONTHS REPORTED", str(months_reported), GOLD, "Months with supplied kilograms")
+    kpi("GROSS PROFIT", fmt_kes(summary["gross"]), SKY, "Selling value less buying cost", "📈")
+    kpi("TOTAL EXPENSES", fmt_kes(summary["expenses"]), ORANGE, "Operating / transport / other costs", "💳")
+    kpi("NET PROFIT MARGIN", f'{summary["margin"]:.1f}%', PINK, "Net profit ÷ selling value", "🎯")
+    kpi("MONTHS REPORTED", str(months_reported), GOLD, "Months with supplied kilograms", "🗓️")
 
     row3 = st.columns(4)
-    kpi("AVG BUYING PRICE / KG", f'KES {summary["avg_buy"]:,.2f}', PURPLE)
-    kpi("AVG SELLING PRICE / KG", f'KES {summary["avg_sell"]:,.2f}', TEAL)
-    kpi("AVG KGS PER MONTH", f'{summary["avg_kgs"]:,.2f}', BLUE)
-    kpi("AVG NET PROFIT / MONTH", fmt_kes(summary["avg_net"]), GREEN)
+    kpi("AVG BUYING PRICE / KG", f'KES {summary["avg_buy"]:,.2f}', PURPLE, icon="🛒")
+    kpi("AVG SELLING PRICE / KG", f'KES {summary["avg_sell"]:,.2f}', TEAL, icon="🏷️")
+    kpi("AVG KGS PER MONTH", f'{summary["avg_kgs"]:,.2f}', BLUE, icon="📦")
+    kpi("AVG NET PROFIT / MONTH", fmt_kes(summary["avg_net"]), GREEN, icon="💵")
 
     # Latest month vs previous month comparison
-    section("LATEST MONTH VS PREVIOUS MONTH")
+    section("🔄  LATEST MONTH VS PREVIOUS MONTH")
     if latest is not None and previous is not None:
         comp_rows = []
         compare_fields = [
@@ -1067,7 +1171,7 @@ if page == "Home":
         st.info("Enter monthly records to display the comparison.")
 
     # Target performance
-    section("TARGET PERFORMANCE")
+    section("🎯  TARGET PERFORMANCE")
     if not year_data.empty:
         target_met = int(
             (year_data["Net Profit (KES)"] == year_data["Net Profit Target (KES)"]).sum()
@@ -1093,18 +1197,18 @@ if page == "Home":
 
     target_a, target_b, target_c = st.columns(3)
     with target_a:
-        insight("COMBINED TARGET", fmt_kes(summary["target"]))
+        insight("🎯 COMBINED TARGET", fmt_kes(summary["target"]))
     with target_b:
-        insight("ACTUAL NET PROFIT", fmt_kes(summary["net"]))
+        insight("💹 ACTUAL NET PROFIT", fmt_kes(summary["net"]))
     with target_c:
         insight(
-            "OVERALL TARGET POSITION",
+            "📍 OVERALL TARGET POSITION",
             f'{summary["target_variance_pct"]:+.1f}%'
             if summary["target"] else "No targets entered",
         )
 
     # Highlights
-    section("BUSINESS HIGHLIGHTS")
+    section("🏆  BUSINESS HIGHLIGHTS")
     if not year_data.empty:
         best = year_data.loc[year_data["Net Profit (KES)"].idxmax()]
         lowest = year_data.loc[year_data["Net Profit (KES)"].idxmin()]
@@ -1123,7 +1227,7 @@ if page == "Home":
         st.info("Highlights will appear after monthly records are entered.")
 
     # Outlook
-    section("YEAR-END OUTLOOK")
+    section("🔭  YEAR-END OUTLOOK")
     outlook = st.columns(3)
     with outlook[0]:
         insight("PROJECTED YEAR-END NET PROFIT", fmt_kes(projected_year_profit))
@@ -1137,7 +1241,7 @@ if page == "Home":
     )
 
     # Charts arranged in dashboard grid
-    section("PERFORMANCE ANALYTICS")
+    section("📈  PERFORMANCE ANALYTICS")
     if not year_data.empty:
         left, middle, right = st.columns(3)
 
@@ -1232,7 +1336,7 @@ if page == "Home":
     else:
         st.info("Charts will appear when monthly data is entered.")
 
-    section("MONTH-BY-MONTH SUMMARY")
+    section("🗓️  MONTH-BY-MONTH SUMMARY")
     st.dataframe(
         report_table,
         use_container_width=True,
@@ -1250,7 +1354,7 @@ if page == "Home":
         },
     )
 
-    section("DOWNLOAD YOUR PRINTABLE REPORT")
+    section("📄  DOWNLOAD YOUR PRINTABLE REPORT")
     report_download_button("home_word_report")
 
 

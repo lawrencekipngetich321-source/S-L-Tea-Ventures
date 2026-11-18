@@ -1,96 +1,119 @@
-"""
-S&L TEA VENTURES — Tea Leaf Business Dashboard
-Run locally: streamlit run app.py
+        st.info("No yearly records to compare.")
 
-Required packages:
-    streamlit
-    pandas
-    numpy
-    plotly
-    python-docx
+    section("YEAR-END OUTLOOK")
+    o1, o2, o3 = st.columns(3)
+    with o1:
+        st.metric("Actual net profit to date", fmt_kes(summary["net"]))
+    with o2:
+        st.metric("Projected year-end net profit", fmt_kes(projected_year_profit))
+    with o3:
+        st.metric(
+            "Projected vs recorded-month target",
+            f"{projected_variance_pct:+.1f}%" if summary["target"] else "No target",
+        )
+    st.caption(
+        "The projection uses actual net profit plus the average net profit of recorded months "
+        "multiplied by the remaining calendar months. It is an estimate only."
+    )
 
-The app stores records in sl_tea_records.csv beside this file.
-For Streamlit Community Cloud, note that local files may be reset when
-the app is redeployed or its container restarts. Use a database or
-persistent cloud storage for long-term multi-user production storage.
-"""
-
-from __future__ import annotations
-
-from io import BytesIO
-from pathlib import Path
-import calendar
-from datetime import datetime
-
-import numpy as np
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-import streamlit as st
-
-try:
-    from docx import Document
-    from docx.shared import Inches, Pt, RGBColor
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.enum.table import WD_TABLE_ALIGNMENT, WD_CELL_VERTICAL_ALIGNMENT
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
-    DOCX_AVAILABLE = True
-except ImportError:
-    DOCX_AVAILABLE = False
+    section("DOWNLOAD YEARLY WORD REPORT")
+    report_download_button("yearly_word_report")
 
 
 # ---------------------------------------------------------------------
-# APP CONFIGURATION & BRAND
+# MONTHLY REPORT
 # ---------------------------------------------------------------------
 
-st.set_page_config(
-    page_title="S&L Tea Ventures | Business Dashboard",
-    page_icon="🍃",
-    layout="wide",
-    initial_sidebar_state="expanded",
+elif page == "Monthly Report":
+    page_header(
+        "MONTHLY REPORT & PRINTABLE SUMMARY",
+        f"Full January–December ledger, target assessment and downloadable Word report • {selected_year}",
+    )
+
+    section("MONTH-BY-MONTH FINANCIAL REPORT")
+    st.dataframe(
+        report_table,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Total Kgs": st.column_config.NumberColumn(format="%.2f"),
+            "Buying Cost (KES)": st.column_config.NumberColumn(format="KES %.2f"),
+            "Selling Value (KES)": st.column_config.NumberColumn(format="KES %.2f"),
+            "Gross Profit (KES)": st.column_config.NumberColumn(format="KES %.2f"),
+            "Expenses (KES)": st.column_config.NumberColumn(format="KES %.2f"),
+            "Net Profit (KES)": st.column_config.NumberColumn(format="KES %.2f"),
+            "Net Margin (%)": st.column_config.NumberColumn(format="%.1f%%"),
+            "Net Profit Target (KES)": st.column_config.NumberColumn(format="KES %.2f"),
+            "Target Variance (%)": st.column_config.NumberColumn(format="%+.1f%%"),
+        },
+    )
+
+    section("YEAR-TO-DATE TOTALS")
+    totals = st.columns(4)
+    with totals[0]:
+        st.metric("Total KGs", f'{summary["kgs"]:,.2f}')
+    with totals[1]:
+        st.metric("Buying cost", fmt_kes(summary["buying"]))
+    with totals[2]:
+        st.metric("Selling value", fmt_kes(summary["selling"]))
+    with totals[3]:
+        st.metric("Net profit", fmt_kes(summary["net"]))
+
+    section("AUTOMATIC MANAGEMENT COMMENTARY")
+    if summary["months"]:
+        latest_month = year_data.iloc[-1]["Month"]
+        commentary = (
+            f"At the end of {latest_month} {selected_year}, "
+            f"{summary['months']} month(s) have been recorded. "
+            f"The business supplied {summary['kgs']:,.2f} kg of tea leaf, "
+            f"with a total selling value of {fmt_kes(summary['selling'])} "
+            f"against buying costs of {fmt_kes(summary['buying'])}. "
+            f"Gross profit is {fmt_kes(summary['gross'])}. After expenses "
+            f"of {fmt_kes(summary['expenses'])}, net profit is "
+            f"{fmt_kes(summary['net'])}, giving a net margin of "
+            f"{summary['margin']:.1f}%. Average buying price is "
+            f"KES {summary['avg_buy']:.2f}/kg and average selling price is "
+            f"KES {summary['avg_sell']:.2f}/kg."
+        )
+        st.write(commentary)
+    else:
+        st.info("No records are available to create commentary.")
+
+    section("DOWNLOAD REPORTS")
+    report_download_button("monthly_page_word_report")
+
+    csv_data = report_table.to_csv(index=False).encode("utf-8-sig")
+    st.download_button(
+        "⬇️ DOWNLOAD MONTHLY REPORT AS CSV",
+        data=csv_data,
+        file_name=f"SL_Tea_Ventures_Monthly_Report_{selected_year}.csv",
+        mime="text/csv",
+        use_container_width=True,
+        key="monthly_csv",
+    )
+
+    full_csv = calculated.to_csv(index=False).encode("utf-8-sig")
+    st.download_button(
+        "⬇️ DOWNLOAD COMPLETE BUSINESS LEDGER AS CSV",
+        data=full_csv,
+        file_name="SL_Tea_Ventures_Complete_Ledger.csv",
+        mime="text/csv",
+        use_container_width=True,
+        key="full_ledger_csv",
+    )
+
+
+# ---------------------------------------------------------------------
+# FOOTER
+# ---------------------------------------------------------------------
+
+st.markdown(
+    """
+    <div class="footer">
+        🍃 <b>S&L TEA VENTURES</b><br>
+        Tea Leaf Business Intelligence & Financial Performance Dashboard<br>
+        All financial amounts are shown in Kenyan Shillings (KES).
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
-
-BRAND = "S&L TEA VENTURES"
-NAVY = "#102A4C"
-NAVY_DARK = "#071B34"
-BLUE = "#2474C6"
-SKY = "#47A9E8"
-TEAL = "#19A7A0"
-GREEN = "#35A853"
-ORANGE = "#F39C35"
-RED = "#E05260"
-PURPLE = "#8662C7"
-PINK = "#D65B9E"
-GOLD = "#D6A52B"
-INK = "#20334D"
-MUTED = "#6B7C93"
-BG = "#F3F6FA"
-BORDER = "#E3EAF2"
-WHITE = "#FFFFFF"
-
-MONTHS = list(calendar.month_name)[1:]
-MONTH_INDEX = {month: i + 1 for i, month in enumerate(MONTHS)}
-DATA_PATH = Path(__file__).with_name("sl_tea_records.csv")
-
-COLUMNS = [
-    "Year",
-    "Month",
-    "Buying Price (KES/kg)",
-    "Selling Price (KES/kg)",
-    "Total Kgs",
-    "Expenses (KES)",
-    "Net Profit Target (KES)",
-]
-
-# The initial values below are taken from the supplied 2026 report.
-# September's buying price is derived from buying cost / total kg:
-# 29,148 / 1,388 = 21.00 KES/kg.
-STARTER_DATA = pd.DataFrame(
-    [
-        {
-            "Year": 2026,
-            "Month": "September",
-            "Buying Price (KES/kg)": 21.00,
-            "Selling Price (KES/kg)": 24.00,
-            "Total Kgs": 1388.00,
